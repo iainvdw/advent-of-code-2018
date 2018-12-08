@@ -2,52 +2,38 @@ const fs = require('fs');
 const { benchmark } = require('../utils/benchmark');
 const claims = require('./input');
 
-const size = [...new Array(1000).fill(0)];
-// const size = [...Array.from({ length: 1000 }, x => 0)];
+// Pregenerate empty row filled with zeroes.
+// Apply destructuring to convert to PACKED_SMI_ELEMENTS array [1].
+// [1] https://v8.dev/blog/elements-kinds
+const row = [...new Array(1000).fill(0)];
 
+// Copy row 1000 times into 2-dimensional array
 function generateFabric() {
   // Strat 1 - 0.8s
   // const fabric = size.map(x => [...size]);
-  const fabric = size.map(x => size.slice());
+  const fabric = row.map(x => row.slice());
 
   return fabric;
 }
-
-// function run2() {
-//   // Strat 2 - 4s strings, 20s parseInt
-//   const fabric = (('0'.repeat(1000) + 'x').repeat(999) + '0'.repeat(1000))
-//     .split(/x/g)
-//     .map(el => el.split('').map(parseInt));
-
-//   return fabric;
-// }
-
-// function run3() {
-//   // Strat 3 - 14s
-//   const fabric = [
-//     ...new Array(1000).fill(0, 0, 999).map(_ => [...new Array(1000).fill(0, 0, 999)]),
-//   ];
-//   const makeClaim = ([id, x, y, w, h]) => {};
-//   claims.forEach(makeClaim);
-
-//   return fabric;
-// }
-
-// console.log(benchmark(run, 1000));
 
 const SINGLE_CLAIM = 1;
 const DOUBLE_CLAIM = 2;
 
 const calcClaims = (fabric, cls) => {
+  // Get claims
   cls.forEach(([id, x, y, w, h]) => {
+    // Loop rows
     for (let yCoord = y; yCoord < y + h; yCoord++) {
+      // Loop entries
       for (let xCoord = x; xCoord < x + w; xCoord++) {
         const cellValue = fabric[yCoord][xCoord];
 
+        // Skip if cell already has a double claim
         if (cellValue === DOUBLE_CLAIM) {
           continue;
         }
 
+        // Check if cell has no claim, then single claim, otherwise double claim
         fabric[yCoord][xCoord] = cellValue === 0 ? SINGLE_CLAIM : DOUBLE_CLAIM;
       }
     }
@@ -57,6 +43,7 @@ const calcClaims = (fabric, cls) => {
 };
 
 const calcDoubleClaims = claimedFabric =>
+  // Count all double claims in each row, add them together
   claimedFabric.reduce(
     (prev, row) => prev + row.reduce((prev, el) => prev + (el === DOUBLE_CLAIM ? 1 : 0), 0),
     0
@@ -64,9 +51,16 @@ const calcDoubleClaims = claimedFabric =>
 
 const runChallenge = () => {
   const claimedFabric = calcClaims(generateFabric(), claims);
-  calcDoubleClaims(claimedFabric);
+  console.log(calcDoubleClaims(claimedFabric));
 
-  fs.writeFileSync(__dirname + '/map.txt', claimedFabric.map(row => row.join('')).join('\n'));
+  return claimedFabric;
 };
 
-runChallenge();
+console.log(benchmark(runChallenge, 1000));
+
+fs.writeFileSync(
+  __dirname + '/map.txt',
+  runChallenge()
+    .map(row => row.join(''))
+    .join('\n')
+);
